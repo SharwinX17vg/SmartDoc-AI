@@ -16,7 +16,13 @@ class TfidfEmbeddingModel:
         self.vectorizer = TfidfVectorizer(stop_words="english", ngram_range=(1, 2))
 
     def fit_transform(self, texts: list[str]):
-        return self.vectorizer.fit_transform(texts)
+        try:
+            return self.vectorizer.fit_transform(texts)
+        except ValueError as error:
+            if "empty vocabulary" not in str(error).lower():
+                raise
+            self.vectorizer = TfidfVectorizer(ngram_range=(1, 2))
+            return self.vectorizer.fit_transform(texts)
 
     def transform(self, texts: list[str]):
         return self.vectorizer.transform(texts)

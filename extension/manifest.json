@@ -10,6 +10,6 @@
   "host_permissions": [
     "http://127.0.0.1:8000/*",
     "http://localhost:8000/*",
-    "https://smartdoc-ai-api.onrender.com/*"
+    "https://smartdoc-ai-backend-hvv9.onrender.com/*"
   ]
 }

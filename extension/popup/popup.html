@@ -8,43 +8,37 @@
 </head>
 <body>
   <main class="app-shell">
-    <header>
-      <p class="eyebrow">SMARTDOC AI</p>
-      <h1>Ask your document.</h1>
-      <p class="intro">Upload one PDF, then search it with grounded answers and page references.</p>
+    <header class="app-header">
+      <div><p class="eyebrow">SMARTDOC AI</p><h1>Ask your documents.</h1></div>
+      <span class="connection-dot" title="Backend connection status"></span>
     </header>
+    <p class="intro">Understand faster with grounded answers and page references.</p>
 
-    <section class="upload-panel" aria-labelledby="upload-heading">
-      <div class="section-heading">
-        <h2 id="upload-heading">Document</h2>
-        <span id="document-status" class="status">Not connected</span>
+    <section class="workspace-panel" aria-labelledby="documents-heading">
+      <div class="section-heading"><h2 id="documents-heading">Workspace</h2><span id="document-count" class="muted">0 documents</span></div>
+      <div id="document-list" class="document-list"><p class="empty-state">Upload one or more PDFs to start.</p></div>
+      <div class="document-actions">
+        <label class="button secondary-button" for="pdf-file">+ Add PDFs</label>
+        <input id="pdf-file" type="file" accept="application/pdf" multiple>
+        <button id="study-all-button" class="secondary-button" type="button" disabled>Study all</button>
+        <button id="clear-button" class="icon-button" type="button" title="Clear workspace" aria-label="Clear workspace">Clear</button>
       </div>
-      <label class="file-picker" for="pdf-file">
-        <span class="file-icon">PDF</span>
-        <span>
-          <strong>Choose a PDF</strong>
-          <small id="file-name">No file selected</small>
-        </span>
-      </label>
-      <input id="pdf-file" type="file" accept="application/pdf">
-      <button id="upload-button" class="primary-button" type="button">Upload document</button>
+      <p id="upload-status" class="status" role="status"></p>
     </section>
 
-    <section class="question-panel" aria-labelledby="question-heading">
-      <div class="section-heading">
-        <h2 id="question-heading">Ask</h2>
-        <span class="commands">/keywords · /find · /explain</span>
+    <section class="chat-panel" aria-labelledby="chat-heading">
+      <div class="section-heading"><h2 id="chat-heading">Conversation</h2><span id="scope-status" class="muted">Select documents</span></div>
+      <div id="chat" class="chat" aria-live="polite"><div class="welcome"><strong>Ask me anything about your documents.</strong><span>Try a quick question below.</span></div></div>
+      <div class="quick-prompts" aria-label="Quick prompts">
+        <button type="button" data-prompt="Summarize the selected documents">Summarize</button>
+        <button type="button" data-prompt="Give me the important topics">Important topics</button>
+        <button type="button" data-prompt="/keywords hardware components">Keywords</button>
+        <button type="button" data-prompt="/find conclusion">Find conclusion</button>
+        <button type="button" data-prompt="Compare the selected documents">Compare</button>
       </div>
-      <textarea id="question" rows="3" placeholder="What is this document about?" aria-label="Question"></textarea>
-      <button id="ask-button" class="primary-button" type="button" disabled>Ask SmartDoc</button>
+      <div class="composer"><textarea id="question" rows="2" placeholder="Ask a question..." aria-label="Question"></textarea><button id="ask-button" class="send-button" type="button" aria-label="Send question">Send</button></div>
     </section>
-
     <p id="message" class="message" role="status"></p>
-    <section id="answer-panel" class="answer-panel" hidden>
-      <div class="section-heading"><h2>Answer</h2></div>
-      <p id="answer"></p>
-      <div id="sources" class="sources"></div>
-    </section>
   </main>
   <script src="config.js"></script>
   <script src="popup.js"></script>
