@@ -1,0 +1,45 @@
+:root {
+  color-scheme: light;
+  --ink: #172322;
+  --muted: #66736f;
+  --line: #d9e2dc;
+  --paper: #f8faf6;
+  --mint: #dcefe2;
+  --accent: #26735f;
+  --accent-dark: #1b5748;
+  --warm: #f3e8d1;
+}
+
+* { box-sizing: border-box; }
+body {
+  width: 360px;
+  min-height: 520px;
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 14px/1.45 Georgia, "Times New Roman", serif;
+}
+.app-shell { padding: 22px; }
+.eyebrow { margin: 0 0 8px; color: var(--accent); font: 700 11px/1.2 Arial, sans-serif; letter-spacing: 1.6px; }
+h1, h2, p { margin-top: 0; }
+h1 { max-width: 260px; margin-bottom: 8px; font-size: 30px; line-height: 1.02; font-weight: 500; }
+h2 { margin-bottom: 0; font: 700 12px/1.2 Arial, sans-serif; letter-spacing: .6px; text-transform: uppercase; }
+.intro { margin-bottom: 22px; color: var(--muted); }
+.upload-panel, .question-panel, .answer-panel { border-top: 1px solid var(--line); padding: 15px 0; }
+.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.status, .commands { color: var(--muted); font: 11px Arial, sans-serif; text-align: right; }
+.file-picker { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px dashed #a9c4b3; background: var(--mint); cursor: pointer; }
+.file-icon { padding: 7px 6px; background: var(--accent); color: white; font: 700 10px Arial, sans-serif; }
+.file-picker strong, .file-picker small { display: block; }
+.file-picker small { margin-top: 2px; color: var(--muted); }
+input[type="file"] { display: none; }
+textarea { width: 100%; resize: vertical; border: 1px solid var(--line); padding: 11px; background: white; color: var(--ink); font: inherit; }
+button { width: 100%; margin-top: 10px; border: 0; padding: 11px 14px; background: var(--accent); color: white; cursor: pointer; font: 700 12px Arial, sans-serif; }
+button:hover { background: var(--accent-dark); }
+button:disabled { background: #aebbb3; cursor: not-allowed; }
+.message { min-height: 20px; margin: 0 0 8px; color: var(--accent-dark); font: 12px Arial, sans-serif; }
+.answer-panel { background: var(--warm); padding: 15px; }
+#answer { white-space: pre-wrap; }
+.source { border-top: 1px solid rgba(23, 35, 34, .16); margin-top: 12px; padding-top: 9px; font: 11px/1.4 Arial, sans-serif; }
+.source strong { display: block; margin-bottom: 3px; }
+.source p { margin: 0; color: #52605b; }

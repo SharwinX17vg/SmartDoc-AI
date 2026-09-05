@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartDoc AI</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header>
+      <p class="eyebrow">SMARTDOC AI</p>
+      <h1>Ask your document.</h1>
+      <p class="intro">Upload one PDF, then search it with grounded answers and page references.</p>
+    </header>
+
+    <section class="upload-panel" aria-labelledby="upload-heading">
+      <div class="section-heading">
+        <h2 id="upload-heading">Document</h2>
+        <span id="document-status" class="status">Not connected</span>
+      </div>
+      <label class="file-picker" for="pdf-file">
+        <span class="file-icon">PDF</span>
+        <span>
+          <strong>Choose a PDF</strong>
+          <small id="file-name">No file selected</small>
+        </span>
+      </label>
+      <input id="pdf-file" type="file" accept="application/pdf">
+      <button id="upload-button" class="primary-button" type="button">Upload document</button>
+    </section>
+
+    <section class="question-panel" aria-labelledby="question-heading">
+      <div class="section-heading">
+        <h2 id="question-heading">Ask</h2>
+        <span class="commands">/keywords · /find · /explain</span>
+      </div>
+      <textarea id="question" rows="3" placeholder="What is this document about?" aria-label="Question"></textarea>
+      <button id="ask-button" class="primary-button" type="button" disabled>Ask SmartDoc</button>
+    </section>
+
+    <p id="message" class="message" role="status"></p>
+    <section id="answer-panel" class="answer-panel" hidden>
+      <div class="section-heading"><h2>Answer</h2></div>
+      <p id="answer"></p>
+      <div id="sources" class="sources"></div>
+    </section>
+  </main>
+  <script src="config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

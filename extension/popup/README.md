@@ -1,0 +1,1 @@
+The popup is the Version 1 extension client. It calls `POST /api/v1/documents` for PDF ingestion and `POST /api/v1/query` for normal questions and the supported `/keywords`, `/find`, and `/explain` commands.
