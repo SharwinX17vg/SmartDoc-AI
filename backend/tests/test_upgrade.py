@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 from unittest.mock import patch
+import pytest
 
 from fastapi.testclient import TestClient
 
@@ -20,8 +21,38 @@ client = TestClient(app)
 def test_casual_chat_does_not_need_documents():
     response = client.post("/api/v1/query", json={"question": "Hi"})
     assert response.status_code == 200
-    assert response.json()["intent"] == "casual_chat"
+    assert response.json()["intent"] == "greeting"
     assert "SmartDoc AI" in response.json()["answer"]
+
+
+@pytest.mark.parametrize(
+    ("question", "intent"),
+    [
+        ("hiii", "greeting"),
+        ("good morning", "greeting"),
+        ("thanks a lot", "thanks"),
+        ("bye", "goodbye"),
+        ("what is the weather today?", "out_of_scope"),
+    ],
+)
+def test_non_document_intents_do_not_retrieve(question, intent):
+    class SpyIndex:
+        def search(self, *args, **kwargs):
+            raise AssertionError("non-document intent must not retrieve")
+
+        def summaries(self):
+            return []
+
+    answer, _, actual_intent, sources, documents = AnswerService(SpyIndex()).answer(question)
+    assert actual_intent == intent
+    assert answer
+    assert sources == []
+    assert documents == []
+
+
+def test_whitespace_question_is_rejected():
+    response = client.post("/api/v1/query", json={"question": "   "})
+    assert response.status_code == 422
 
 
 def test_index_scopes_retrieval_to_selected_document(tmp_path: Path):
@@ -93,6 +124,7 @@ def test_llm_provider_generates_from_source_aware_prompt():
     sent = json.loads(request.call_args.args[0].data.decode())
     assert "DOCUMENT CONTEXT" in sent["messages"][-1]["content"]
     assert sent["messages"][0]["role"] == "system"
+    assert request.call_args.args[0].headers["Authorization"] == "Bearer secret"
 
 
 def test_answer_service_calls_provider_for_explain(tmp_path: Path):

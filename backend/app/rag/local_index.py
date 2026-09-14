@@ -1,10 +1,15 @@
 import json
+import logging
+import re
 from dataclasses import asdict
 from pathlib import Path
 from uuid import uuid4
 
 from ..document_processing.chunker import DocumentChunk
 from .embeddings import TfidfEmbeddingModel
+
+
+logger = logging.getLogger(__name__)
 
 
 class LocalHybridIndex:
@@ -54,13 +59,13 @@ class LocalHybridIndex:
             return []
         query_vector = self.embedding_model.transform([query])
         semantic_scores = (self.matrix @ query_vector.T).toarray().ravel()
-        terms = {term.lower() for term in query.split() if term.strip()}
+        terms = set(re.findall(r"[a-z0-9][a-z0-9'-]*", query.lower()))
         allowed = set(document_ids) if document_ids else None
         results = []
         for index, chunk in enumerate(self.chunks):
             if allowed is not None and chunk.document_id not in allowed:
                 continue
-            words = set(chunk.text.lower().split())
+            words = set(re.findall(r"[a-z0-9][a-z0-9'-]*", chunk.text.lower()))
             keyword_score = len(terms & words) / max(len(terms), 1)
             combined_score = (0.7 * float(semantic_scores[index])) + (0.3 * keyword_score)
             if combined_score >= min_score:
@@ -158,5 +163,6 @@ class LocalHybridIndex:
                         "chunks": chunks,
                     }
             self._rebuild()
-        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+            logger.warning("Could not load persisted document index; starting empty: %s", error)
             self.documents.clear()

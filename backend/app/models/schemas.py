@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class SourceReference(BaseModel):
@@ -28,6 +28,16 @@ class QueryRequest(BaseModel):
     top_k: int = Field(default=5, ge=1, le=10)
     selected_document_ids: list[str] | None = None
     conversation: list[dict[str, str]] = Field(default_factory=list, max_length=8)
+
+    @field_validator("question")
+    @classmethod
+    def validate_question(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Question cannot be empty")
+        if len(value) > 4_000:
+            raise ValueError("Question is too long")
+        return value
 
 
 class QueryResponse(BaseModel):

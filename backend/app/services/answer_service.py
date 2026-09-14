@@ -25,8 +25,25 @@ class AnswerService:
     ) -> tuple[str, str | None, str, list[SourceReference], list[DocumentSummary]]:
         command, request = self._parse_command(question)
         intent = self._intent(command, request)
-        if intent == "casual_chat":
-            return self._casual(request), command, intent, [], []
+        if intent in {"greeting", "thanks", "goodbye", "invalid"}:
+            return self._casual(request, intent), command, intent, [], []
+        matches = None
+        if intent == "out_of_scope":
+            # An apparently general question can still be valid when the selected
+            # document explicitly contains that subject.
+            if not getattr(self.index, "chunks", None):
+                return self._casual(request, intent), command, intent, [], []
+            probe_score = max(float(os.getenv("MIN_RELEVANCE_SCORE", "0.1")), 0.15)
+            matches = self.index.search(
+                request,
+                top_k=1,
+                document_ids=document_ids,
+                candidates=1,
+                min_score=probe_score,
+            )
+            if not matches:
+                return self._casual(request, intent), command, intent, [], []
+            intent = "document_question"
         if conversation and self._is_follow_up(request):
             recent_context = " ".join(item.get("content", "") for item in conversation[-8:] if item.get("content"))
             request = f"{recent_context} {request}".strip()
@@ -34,7 +51,8 @@ class AnswerService:
         min_score = float(os.getenv("MIN_RELEVANCE_SCORE", "0.05"))
         final_chunks = int(os.getenv("FINAL_CONTEXT_CHUNKS", str(top_k)))
         candidates = max(candidates, final_chunks)
-        matches = self.index.search(request, candidates, document_ids, candidates, min_score)
+        if matches is None:
+            matches = self.index.search(request, candidates, document_ids, candidates, min_score)
         matches = self._compress_matches(matches, final_chunks)
         sources = [
             SourceReference(
@@ -72,18 +90,41 @@ class AnswerService:
         if command == "/keywords": return "keywords"
         if command == "/find": return "search"
         if command == "/explain": return "explanation"
-        if re.fullmatch(r"(hi|hello|hey|how are you|thanks|thank you)[!. ]*", lowered): return "casual_chat"
+        normalized = re.sub(r"[^a-z0-9'\s]", "", lowered)
+        if re.fullmatch(r"h+i+", normalized) or normalized in {
+            "hi", "hello", "hey", "good morning", "good afternoon",
+            "good evening", "how are you", "what's up",
+        }:
+            return "greeting"
+        if normalized in {"thanks", "thank you", "thanks a lot", "okay thanks", "ok thanks"}:
+            return "thanks"
+        if normalized in {"bye", "goodbye", "see you", "see ya"}:
+            return "goodbye"
+        if re.fullmatch(r"[a-z]{6,}", normalized) and not re.search(r"[aeiou]", normalized):
+            return "invalid"
+        if any(phrase in normalized for phrase in (
+            "weather today", "news today", "stock price", "tell me a joke",
+            "current time", "latest sports score",
+        )):
+            return "out_of_scope"
         if any(word in lowered for word in ("compare", "difference", "common between")): return "comparison"
         if any(word in lowered for word in ("summarize", "summary", "important topics", "study all")): return "summary"
         if any(word in lowered for word in ("explain", "how does", "why is", "what does")): return "explanation"
         return "document_question"
 
     @staticmethod
-    def _casual(question: str) -> str:
-        lowered = question.lower()
-        if "thank" in lowered: return "You're welcome."
-        if "how are you" in lowered: return "I'm ready to help you understand your documents."
-        return "Hi! I'm SmartDoc AI. Upload one or more documents and ask me anything about them."
+    def _casual(question: str, intent: str) -> str:
+        if intent == "thanks":
+            return "You're welcome!"
+        if intent == "goodbye":
+            return "Goodbye! Come back whenever you want to explore your documents."
+        if intent == "out_of_scope":
+            return "I can answer questions grounded in your uploaded documents."
+        if intent == "invalid":
+            return "Please ask a clear question about your uploaded documents."
+        if "how are you" in question.lower():
+            return "I'm ready to help you understand your documents."
+        return "Hi! I'm SmartDoc AI. Ask me anything about your uploaded documents."
 
     @staticmethod
     def _is_follow_up(question: str) -> bool:

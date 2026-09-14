@@ -1,5 +1,5 @@
 const API_BASE = `${window.SMARTDOC_API_ORIGIN}/api/v1`;
-const state = { documents: [], selected: new Set(), history: [] };
+const state = { documents: [], selected: new Set(), history: [], busy: false, uploading: false, requestVersion: 0, controller: null };
 const $ = (selector) => document.querySelector(selector);
 const fileInput = $("#pdf-file");
 const documentList = $("#document-list");
@@ -23,6 +23,9 @@ loadDocuments();
 
 async function uploadFiles() {
   if (!fileInput.files.length) return;
+  if (state.busy || state.uploading) return setStatus("Please wait for the current request to finish.", true);
+  state.uploading = true;
+  const version = ++state.requestVersion;
   setStatus("Uploading and indexing documents...");
   const formData = new FormData();
   [...fileInput.files].forEach((file) => formData.append("files", file));
@@ -30,13 +33,14 @@ async function uploadFiles() {
     const response = await fetch(`${API_BASE}/documents/batch`, { method: "POST", body: formData });
     const data = await readResponse(response);
     setStatus(data.failures.length ? `Indexed ${data.uploaded.length}; ${data.failures.length} failed.` : `Indexed ${data.uploaded.length} document(s).`);
-    await loadDocuments();
+    if (version === state.requestVersion) await loadDocuments();
   } catch (error) { setStatus(error.message, true); }
-  fileInput.value = "";
+  finally { state.uploading = false; fileInput.value = ""; }
 }
 
 async function loadDocuments() {
-  try { const data = await readResponse(await fetch(`${API_BASE}/documents`)); state.documents = data.documents; state.selected = new Set(state.documents.map((doc) => doc.document_id)); renderDocuments(); }
+  const version = state.requestVersion;
+  try { const data = await readResponse(await fetch(`${API_BASE}/documents`)); if (version !== state.requestVersion) return; state.documents = data.documents; state.selected = new Set(state.documents.map((doc) => doc.document_id)); renderDocuments(); }
   catch (error) { setStatus("SmartDoc could not connect to the backend.", true); }
 }
 
@@ -56,6 +60,8 @@ function renderDocuments() {
 }
 
 async function removeDocument(documentId) {
+  state.requestVersion++;
+  state.controller?.abort();
   try { await readResponse(await fetch(`${API_BASE}/documents/${encodeURIComponent(documentId)}`, { method: "DELETE" })); await loadDocuments(); setStatus("Document removed."); }
   catch (error) { setStatus(error.message, true); }
 }
@@ -64,6 +70,8 @@ function renderScope() { scopeStatus.textContent = state.selected.size ? `Using 
 
 async function clearWorkspace() {
   if (!state.documents.length) return;
+  state.requestVersion++;
+  state.controller?.abort();
   try { await readResponse(await fetch(`${API_BASE}/documents/clear`, { method: "POST" })); state.documents = []; state.selected.clear(); state.history = []; chat.replaceChildren(); renderDocuments(); setStatus("Workspace cleared."); }
   catch (error) { setStatus(error.message, true); }
 }
@@ -71,14 +79,18 @@ async function clearWorkspace() {
 async function askQuestion() {
   const text = question.value.trim();
   if (!text) return;
+  if (state.busy) return;
   if (!state.selected.size && !isCasual(text)) return setStatus("Select at least one document first.", true);
   question.value = ""; appendMessage("user", text); setBusy(true); setStatus("Searching documents...");
+  const version = ++state.requestVersion;
+  state.controller = new AbortController();
   try {
-    const response = await readResponse(await fetch(`${API_BASE}/query`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: text, top_k: 5, selected_document_ids: [...state.selected], conversation: state.history.slice(-8) }) }));
+    const response = await readResponse(await fetch(`${API_BASE}/query`, { method: "POST", signal: state.controller.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: text, top_k: 5, selected_document_ids: [...state.selected], conversation: state.history.slice(-8) }) }));
+    if (version !== state.requestVersion) return;
     state.history.push({ role: "user", content: text }, { role: "assistant", content: response.answer });
     appendMessage("assistant", response.answer, response.sources);
     setStatus("");
-  } catch (error) { appendMessage("assistant", error.message); setStatus("Request failed.", true); }
+  } catch (error) { if (error.name !== "AbortError" && version === state.requestVersion) { appendMessage("assistant", error.message); setStatus("Request failed.", true); } }
   finally { setBusy(false); }
 }
 
@@ -101,6 +113,6 @@ async function copyText(text) { try { await navigator.clipboard.writeText(text);
 async function shareAnswer(text, sourceItems) { try { const data = await readResponse(await fetch(`${API_BASE}/share`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answer: text, sources: sourceItems }) })); if (navigator.share) await navigator.share({ title: "SmartDoc AI answer", text, url: data.share_url }); else await copyText(data.share_url); } catch (error) { setStatus(error.message, true); } }
 function downloadText(text) { const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([text], { type: "text/plain" })); link.download = "smartdoc-answer.txt"; link.click(); URL.revokeObjectURL(link.href); }
 async function readResponse(response) { const data = await response.json(); if (!response.ok) throw new Error(data.detail || "SmartDoc could not complete that request."); return data; }
-function isCasual(text) { return /^(hi|hello|hey|how are you|thanks|thank you)[!. ]*$/i.test(text); }
-function setBusy(busy) { askButton.disabled = busy; askButton.textContent = busy ? "..." : "Send"; }
+function isCasual(text) { return /^(h+i+|hello|hey|good morning|good afternoon|good evening|how are you|what's up|thanks|thank you|thanks a lot|okay thanks|ok thanks|bye|goodbye|see you|see ya)[!. ]*$/i.test(text.trim()); }
+function setBusy(busy) { state.busy = busy; askButton.disabled = busy; askButton.textContent = busy ? "..." : "Send"; }
 function setStatus(text, error = false) { uploadStatus.textContent = text; message.textContent = text; message.className = error ? "message error" : "message"; }
