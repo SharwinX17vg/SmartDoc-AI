@@ -7,7 +7,7 @@ SmartDoc AI is a document question-answering system that allows users to upload 
 ## Features
 
 * Upload single or multiple PDF documents
-* Ask natural-language questions
+* ChatGPT/Claude-style natural conversation with bounded multi-turn follow-ups
 * RAG-based document question answering
 * Semantic search using embeddings
 * Document and page-level source references
@@ -100,8 +100,11 @@ Core document processing, RAG retrieval, Gemini integration, multi-document supp
 
 Answer-quality optimization and additional features are under continuous development.
 
-SmartDoc remains document-grounded: learning workflows use only the selected PDF evidence and do
-not silently fall back to unlabelled general-AI knowledge.
+SmartDoc uses a ChatGPT/Claude-style conversational interface, but remains document-grounded:
+learning workflows and substantive answers use only the selected PDF evidence and do not silently
+fall back to unlabelled general-AI knowledge. Configure `LLM_PROVIDER`, `LLM_MODEL`, and
+`LLM_API_KEY` (or `OPENAI_API_KEY`) for natural generative responses; without a provider it uses
+the safe extractive fallback.
 
 ## Future Improvements
 
