@@ -116,7 +116,7 @@ def _task(question: str) -> str:
         return "teaching"
     if any(term in question for term in ("explain", "why", "how", "teach", "don't understand", "example")):
         return "explanation"
-    if any(term in question for term in ("exam", "marks", "mark answer")):
+    if re.search(r"\b\d+\s*[- ]?marks?\b", question) or any(term in question for term in ("exam", "mark answer", "question bank", "short questions")):
         return "exam"
     return "question"
 

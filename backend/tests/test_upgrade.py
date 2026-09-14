@@ -158,6 +158,12 @@ def test_task_aware_retrieval_adds_synthesis_query():
     assert "important topics" in queries[1]
 
 
+def test_natural_language_mark_request_is_exam_workflow():
+    plan = build_request_plan("give all the 2 mark question from this")
+    assert plan.task == "exam"
+    assert plan.spec.depth == "brief"
+
+
 @pytest.mark.parametrize(
     ("question", "task"),
     [

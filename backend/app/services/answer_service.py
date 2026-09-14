@@ -86,7 +86,7 @@ class AnswerService:
                 plan.task,
                 page_scope,
             )
-        if not matches and plan.task in {"summary", "important_topics", "overview"}:
+        if not matches and plan.task in {"summary", "important_topics", "overview", "exam", "quiz", "flashcards", "notes", "revision"}:
             matches = self._browse_for_synthesis(document_ids, page_scope, candidates)
         matches = self._compress_matches(matches, final_chunks)
         sources = [
