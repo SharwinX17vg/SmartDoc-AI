@@ -102,6 +102,22 @@ class LocalHybridIndex:
             for document in self.documents.values()
         ]
 
+    def browse(
+        self,
+        document_ids: list[str] | None = None,
+        page_range: tuple[int, int] | None = None,
+        limit: int = 20,
+    ) -> list[tuple[DocumentChunk, float]]:
+        allowed = set(document_ids) if document_ids else None
+        results = []
+        for chunk in self.chunks:
+            if allowed is not None and chunk.document_id not in allowed:
+                continue
+            if page_range is not None and not page_range[0] <= chunk.page_number <= page_range[1]:
+                continue
+            results.append((chunk, 0.0))
+        return results[:limit]
+
     def _rebuild(self) -> None:
         self.chunks = [chunk for document in self.documents.values() for chunk in document["chunks"]]
         self.document_id = self.chunks[0].document_id if self.chunks else ""

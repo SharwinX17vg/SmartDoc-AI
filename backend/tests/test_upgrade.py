@@ -196,6 +196,28 @@ def test_index_can_limit_retrieval_to_a_page_range(tmp_path: Path):
     assert all(chunk.page_number == 3 for chunk, _ in matches)
 
 
+def test_important_topics_browse_selected_document_when_similarity_is_weak(tmp_path: Path):
+    index = LocalHybridIndex(tmp_path / "index.json")
+    index.add_document(
+        "paper.pdf",
+        [DocumentChunk("a", "a", "paper.pdf", 1, "Purpose", "The controller manages power and thermal safety.")],
+        "a",
+    )
+
+    class FakeProvider:
+        def generate(self, question, context, intent, conversation=None):
+            assert intent == "summary"
+            assert "power and thermal safety" in context
+            return "Important topic: power and thermal safety."
+
+    answer, _, intent, sources, _ = AnswerService(index, FakeProvider()).answer(
+        "Give me important topics from this PDF"
+    )
+    assert intent == "summary"
+    assert "thermal safety" in answer
+    assert sources
+
+
 def test_chunker_does_not_start_or_end_chunks_mid_word():
     page = PageText(1, "Purpose 117 hardware generation and reliable traffic handling " * 30)
     chunks = chunk_pages([page], chunk_size=80, overlap=15)

@@ -86,6 +86,8 @@ class AnswerService:
                 plan.task,
                 page_scope,
             )
+        if not matches and plan.task in {"summary", "important_topics", "overview"}:
+            matches = self._browse_for_synthesis(document_ids, page_scope, candidates)
         matches = self._compress_matches(matches, final_chunks)
         sources = [
             SourceReference(
@@ -111,6 +113,12 @@ class AnswerService:
             matches,
         )
         return answer, command, intent, sources, self._documents(document_ids, matches)
+
+    def _browse_for_synthesis(self, document_ids, page_range, limit):
+        browse = getattr(self.index, "browse", None)
+        if browse is None:
+            return []
+        return browse(document_ids=document_ids, page_range=page_range, limit=max(limit, 8))
 
     def _retrieve(self, queries, candidates, document_ids, min_score, task, page_range=None):
         per_query = max(2, candidates // len(queries))
