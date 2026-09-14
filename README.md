@@ -14,6 +14,8 @@ SmartDoc AI is a document question-answering system that allows users to upload 
 * Multi-document querying
 * Conversational follow-up questions
 * Study-all mode
+* Learning-oriented requests for teaching, study plans, quizzes, flashcards, revision, and exam preparation
+* Page-scoped retrieval using natural language (for example, "pages 2 to 4")
 * Share and download answers
 * Chrome Extension interface
 * REST API with Swagger documentation
@@ -81,7 +83,7 @@ Answer + Source References
 | POST   | `/api/v1/documents/batch` | Upload multiple PDFs |
 | DELETE | `/api/v1/documents/{id}`  | Delete document      |
 | POST   | `/api/v1/documents/clear` | Clear documents      |
-| POST   | `/api/v1/query`           | Ask a question       |
+| POST   | `/api/v1/query`           | Ask a document-grounded question or learning task |
 | POST   | `/api/v1/share`           | Create share link    |
 | GET    | `/api/v1/share/{id}`      | Get shared answer    |
 
@@ -97,6 +99,9 @@ https://smartdoc-ai-backend-hvv9.onrender.com/docs
 Core document processing, RAG retrieval, Gemini integration, multi-document support, Chrome Extension, API, testing, and cloud deployment are implemented.
 
 Answer-quality optimization and additional features are under continuous development.
+
+SmartDoc remains document-grounded: learning workflows use only the selected PDF evidence and do
+not silently fall back to unlabelled general-AI knowledge.
 
 ## Future Improvements
 

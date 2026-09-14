@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class SourceReference(BaseModel):
@@ -28,6 +28,8 @@ class QueryRequest(BaseModel):
     top_k: int = Field(default=5, ge=1, le=10)
     selected_document_ids: list[str] | None = None
     conversation: list[dict[str, str]] = Field(default_factory=list, max_length=8)
+    page_start: int | None = Field(default=None, ge=1)
+    page_end: int | None = Field(default=None, ge=1)
 
     @field_validator("question")
     @classmethod
@@ -38,6 +40,12 @@ class QueryRequest(BaseModel):
         if len(value) > 4_000:
             raise ValueError("Question is too long")
         return value
+
+    @model_validator(mode="after")
+    def validate_page_range(self):
+        if self.page_start is not None and self.page_end is not None and self.page_start > self.page_end:
+            raise ValueError("page_start cannot be greater than page_end")
+        return self
 
 
 class QueryResponse(BaseModel):

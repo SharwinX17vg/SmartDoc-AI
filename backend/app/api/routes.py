@@ -250,12 +250,15 @@ def query_document(
         request.top_k,
         request.selected_document_ids,
         request.conversation,
+        request.page_start,
+        request.page_end,
     )
 
     return QueryResponse(
         answer=answer,
         command=command,
         intent=intent,
+        source_mode="documents",
         sources=sources,
         documents_used=documents_used,
     )

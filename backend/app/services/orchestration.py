@@ -30,6 +30,11 @@ class RequestPlan:
     spec: ResponseSpec
     follow_up: bool = False
     source_mode: str = "documents"
+    topic: str = ""
+    entities: tuple[str, ...] = ()
+    page_scope: tuple[int, int] | None = None
+    multipart: bool = False
+    clarification_needed: bool = False
     metadata: dict[str, str] = field(default_factory=dict)
 
 
@@ -44,6 +49,11 @@ def build_request_plan(
     preferences = _preferences(history)
     spec = _response_spec(lowered, preferences)
     task = _task(lowered)
+    page_scope = _page_scope(lowered)
+    topic = _topic(text)
+    entities = tuple(_entities(text))
+    multipart = _is_multipart(lowered)
+    clarification_needed = len(text.split()) < 3 and not follow_up
     reference = _reference_context(history) if follow_up else ""
     retrieval_query = f"{reference} {text}".strip() if reference else text
     generation_question = f"{text}\n\n{spec.instructions()}"
@@ -56,6 +66,11 @@ def build_request_plan(
         spec=spec,
         follow_up=follow_up,
         metadata={"source": "selected_documents"},
+        topic=topic,
+        entities=entities,
+        page_scope=page_scope,
+        multipart=multipart,
+        clarification_needed=clarification_needed,
     )
 
 
@@ -67,6 +82,8 @@ def retrieval_queries(plan: RequestPlan) -> list[str]:
         queries.append(plan.retrieval_query + " differences similarities advantages limitations")
     elif plan.task == "location":
         queries.append(plan.retrieval_query + " page section definition")
+    elif plan.task in {"teaching", "study_plan", "quiz", "flashcards", "notes", "revision", "exam", "viva", "interview"}:
+        queries.append(plan.retrieval_query + " definitions key concepts examples common mistakes")
     return list(dict.fromkeys(query for query in queries if query.strip()))
 
 
@@ -81,8 +98,26 @@ def _task(question: str) -> str:
         return "location"
     if any(term in question for term in ("keyword", "key terms")):
         return "keywords"
+    if any(term in question for term in ("flashcard", "flash cards", "flash cards")):
+        return "flashcards"
+    if any(term in question for term in ("quiz me", "make a quiz", "practice quiz", "mcq")):
+        return "quiz"
+    if any(term in question for term in ("study plan", "study schedule", "revision plan")):
+        return "study_plan"
+    if any(term in question for term in ("make notes", "take notes", "notes from")):
+        return "notes"
+    if any(term in question for term in ("revise", "revision", "recap")):
+        return "revision"
+    if "viva" in question:
+        return "viva"
+    if any(term in question for term in ("interview", "mock interview")):
+        return "interview"
+    if any(term in question for term in ("teach me", "teaching mode", "teach this")):
+        return "teaching"
     if any(term in question for term in ("explain", "why", "how", "teach", "don't understand", "example")):
         return "explanation"
+    if any(term in question for term in ("exam", "marks", "mark answer")):
+        return "exam"
     return "question"
 
 
@@ -97,6 +132,9 @@ def _response_spec(question: str, preferences: tuple[str, ...]) -> ResponseSpec:
     if "exam" in question:
         audience = "learner"
         style = "exam-ready"
+    if any(term in question for term in ("teach", "quiz", "flashcard", "study plan", "viva", "interview", "revision")):
+        audience = "learner"
+        style = "study-oriented"
     if "example" in question:
         response_format = "example"
     else:
@@ -137,3 +175,29 @@ def _preferences(history: list[dict[str, str]]) -> tuple[str, ...]:
     if user_text.count("detailed") >= 2:
         preferences.append("prefer detailed answers")
     return tuple(preferences)
+
+
+def _page_scope(question: str) -> tuple[int, int] | None:
+    match = re.search(r"\bpages?\s+(\d+)\s*(?:-|to|through)\s*(\d+)\b", question)
+    if match:
+        start, end = sorted((int(match.group(1)), int(match.group(2))))
+        return start, end
+    match = re.search(r"\bpage\s+(\d+)\b", question)
+    if match:
+        page = int(match.group(1))
+        return page, page
+    return None
+
+
+def _topic(question: str) -> str:
+    cleaned = re.sub(r"\b(?:please|can you|could you|explain|summarize|tell me about)\b", "", question, flags=re.I)
+    return " ".join(cleaned.split()).strip(" ?.")
+
+
+def _entities(question: str) -> list[str]:
+    ignored = {"Compare", "Explain", "Summarize", "What", "Which", "How", "Tell"}
+    return [entity for entity in re.findall(r"\b[A-Z][A-Za-z0-9-]{2,}\b", question) if entity not in ignored]
+
+
+def _is_multipart(question: str) -> bool:
+    return len(re.findall(r"\b(?:and|also|plus|then|secondly|firstly)\b", question)) > 0 or "?" in question.rstrip("?")

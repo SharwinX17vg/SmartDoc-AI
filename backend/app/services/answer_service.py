@@ -23,9 +23,16 @@ class AnswerService:
         top_k: int = 5,
         document_ids: list[str] | None = None,
         conversation: list[dict[str, str]] | None = None,
+        page_start: int | None = None,
+        page_end: int | None = None,
     ) -> tuple[str, str | None, str, list[SourceReference], list[DocumentSummary]]:
         command, request = self._parse_command(question)
         plan = build_request_plan(request, conversation)
+        page_scope = (
+            (page_start, page_end or page_start)
+            if page_start is not None
+            else plan.page_scope
+        )
         intent = self._intent(command, request)
         if intent == "document_question":
             intent = {
@@ -34,6 +41,15 @@ class AnswerService:
                 "important_topics": "summary",
                 "comparison": "comparison",
                 "explanation": "explanation",
+                "teaching": "teaching",
+                "study_plan": "study_plan",
+                "quiz": "quiz",
+                "flashcards": "flashcards",
+                "notes": "notes",
+                "revision": "revision",
+                "exam": "exam",
+                "viva": "viva",
+                "interview": "interview",
             }.get(plan.task, intent)
         if intent in {"greeting", "thanks", "goodbye", "invalid"}:
             return self._casual(request, intent), command, intent, [], []
@@ -50,6 +66,7 @@ class AnswerService:
                 document_ids=document_ids,
                 candidates=1,
                 min_score=probe_score,
+                page_range=page_scope,
             )
             if not matches:
                 return self._casual(request, intent), command, intent, [], []
@@ -67,6 +84,7 @@ class AnswerService:
                 document_ids,
                 min_score,
                 plan.task,
+                page_scope,
             )
         matches = self._compress_matches(matches, final_chunks)
         sources = [
@@ -94,7 +112,7 @@ class AnswerService:
         )
         return answer, command, intent, sources, self._documents(document_ids, matches)
 
-    def _retrieve(self, queries, candidates, document_ids, min_score, task):
+    def _retrieve(self, queries, candidates, document_ids, min_score, task, page_range=None):
         per_query = max(2, candidates // len(queries))
         found = []
         seen: set[str] = set()
@@ -105,6 +123,7 @@ class AnswerService:
                 document_ids,
                 candidates,
                 min_score,
+                page_range,
             ):
                 if chunk.chunk_id in seen:
                     continue

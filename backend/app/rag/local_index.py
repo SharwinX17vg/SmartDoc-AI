@@ -54,6 +54,7 @@ class LocalHybridIndex:
         document_ids: list[str] | None = None,
         candidates: int = 15,
         min_score: float = 0.0,
+        page_range: tuple[int, int] | None = None,
     ) -> list[tuple[DocumentChunk, float]]:
         if not self.chunks or self.matrix is None:
             return []
@@ -64,6 +65,8 @@ class LocalHybridIndex:
         results = []
         for index, chunk in enumerate(self.chunks):
             if allowed is not None and chunk.document_id not in allowed:
+                continue
+            if page_range is not None and not page_range[0] <= chunk.page_number <= page_range[1]:
                 continue
             words = set(re.findall(r"[a-z0-9][a-z0-9'-]*", chunk.text.lower()))
             keyword_score = len(terms & words) / max(len(terms), 1)

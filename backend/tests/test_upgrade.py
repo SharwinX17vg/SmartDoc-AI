@@ -156,6 +156,44 @@ def test_task_aware_retrieval_adds_synthesis_query():
     assert "important topics" in queries[1]
 
 
+@pytest.mark.parametrize(
+    ("question", "task"),
+    [
+        ("Teach me this topic", "teaching"),
+        ("Make flashcards from this", "flashcards"),
+        ("Quiz me on the chapter", "quiz"),
+        ("Create a study plan", "study_plan"),
+    ],
+)
+def test_learning_tasks_are_structured_without_general_ai_fallback(question, task):
+    plan = build_request_plan(question)
+    assert plan.task == task
+    assert plan.source_mode == "documents"
+    assert plan.spec.audience == "learner"
+
+
+def test_request_plan_extracts_page_scope_entities_and_multipart_question():
+    plan = build_request_plan("Compare ADC and PWM on pages 2 to 4, and explain the difference?")
+    assert plan.page_scope == (2, 4)
+    assert plan.entities == ("ADC", "PWM")
+    assert plan.multipart is True
+
+
+def test_index_can_limit_retrieval_to_a_page_range(tmp_path: Path):
+    index = LocalHybridIndex(tmp_path / "index.json")
+    index.add_document(
+        "paper.pdf",
+        [
+            DocumentChunk("a", "a", "paper.pdf", 1, "Intro", "controller overview"),
+            DocumentChunk("b", "a", "paper.pdf", 3, "Methods", "controller method"),
+        ],
+        "a",
+    )
+    matches = index.search("controller", page_range=(3, 3))
+    assert matches
+    assert all(chunk.page_number == 3 for chunk, _ in matches)
+
+
 def test_answer_service_calls_provider_for_explain(tmp_path: Path):
     index = LocalHybridIndex(tmp_path / "index.json")
     index.add_document("paper.pdf", [DocumentChunk("a", "a", "paper.pdf", 1, "Methods", "PWM controls motor speed.")], "a")
