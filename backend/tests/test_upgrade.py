@@ -8,6 +8,8 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.document_processing.chunker import DocumentChunk
+from app.document_processing.chunker import chunk_pages
+from app.document_processing.pdf_extractor import PageText
 from app.rag.embeddings import TfidfEmbeddingModel
 from app.rag.local_index import LocalHybridIndex
 from app.services.answer_provider import (
@@ -192,6 +194,15 @@ def test_index_can_limit_retrieval_to_a_page_range(tmp_path: Path):
     matches = index.search("controller", page_range=(3, 3))
     assert matches
     assert all(chunk.page_number == 3 for chunk, _ in matches)
+
+
+def test_chunker_does_not_start_or_end_chunks_mid_word():
+    page = PageText(1, "Purpose 117 hardware generation and reliable traffic handling " * 30)
+    chunks = chunk_pages([page], chunk_size=80, overlap=15)
+    assert chunks
+    for chunk in chunks:
+        assert not chunk.text.startswith(("urpose", "117 ardware", "ardware"))
+        assert not chunk.text.endswith(("Purpos", "hardwa", "generatio"))
 
 
 def test_answer_service_calls_provider_for_explain(tmp_path: Path):

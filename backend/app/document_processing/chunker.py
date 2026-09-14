@@ -28,7 +28,8 @@ def chunk_pages(
         start = 0
         chunk_number = 0
         while start < len(page.text):
-            end = min(start + chunk_size, len(page.text))
+            target_end = min(start + chunk_size, len(page.text))
+            end = _boundary_before(page.text, target_end, start)
             text = page.text[start:end].strip()
             if text:
                 chunks.append(
@@ -43,7 +44,7 @@ def chunk_pages(
                 )
             if end == len(page.text):
                 break
-            start = end - overlap
+            start = _boundary_after(page.text, max(start + 1, end - overlap))
             chunk_number += 1
     return chunks
 
@@ -54,3 +55,17 @@ def _section_title(prefix: str) -> str | None:
         return None
     candidate = lines[-1]
     return candidate if len(candidate) <= 100 and len(candidate.split()) <= 12 else None
+
+
+def _boundary_before(text: str, position: int, minimum: int) -> int:
+    if position >= len(text):
+        return len(text)
+    boundary = text.rfind(" ", minimum + 1, position)
+    return boundary if boundary > minimum else position
+
+
+def _boundary_after(text: str, position: int) -> int:
+    if position >= len(text):
+        return len(text)
+    boundary = text.find(" ", position)
+    return len(text) if boundary == -1 else boundary + 1
