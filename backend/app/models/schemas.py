@@ -44,6 +44,7 @@ class QueryResponse(BaseModel):
     answer: str
     command: str | None = None
     intent: str = "document_question"
+    source_mode: str = "documents"
     sources: list[SourceReference]
     documents_used: list[DocumentSummary] = Field(default_factory=list)
 

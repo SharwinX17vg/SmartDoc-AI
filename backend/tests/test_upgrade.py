@@ -2,17 +2,23 @@ from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 from unittest.mock import patch
-import pytest
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.document_processing.chunker import DocumentChunk
-from app.rag.local_index import LocalHybridIndex
-from app.services.answer_service import AnswerService
-from app.services.answer_provider import AnswerProviderError, ExtractiveAnswerProvider, LLMAnswerProvider, create_answer_provider
-from app.services.share_service import ShareService
 from app.rag.embeddings import TfidfEmbeddingModel
+from app.rag.local_index import LocalHybridIndex
+from app.services.answer_provider import (
+    AnswerProviderError,
+    ExtractiveAnswerProvider,
+    LLMAnswerProvider,
+    create_answer_provider,
+)
+from app.services.answer_service import AnswerService
+from app.services.orchestration import build_request_plan, retrieval_queries
+from app.services.share_service import ShareService
 
 
 client = TestClient(app)
@@ -125,6 +131,29 @@ def test_llm_provider_generates_from_source_aware_prompt():
     assert "DOCUMENT CONTEXT" in sent["messages"][-1]["content"]
     assert sent["messages"][0]["role"] == "system"
     assert request.call_args.args[0].headers["Authorization"] == "Bearer secret"
+
+
+def test_request_plan_adapts_follow_up_and_response_requirements():
+    plan = build_request_plan(
+        "Explain that simply for my exam",
+        [
+            {"role": "user", "content": "What is ADC?"},
+            {"role": "assistant", "content": "ADC converts analog signals into digital values."},
+        ],
+    )
+    assert plan.task == "explanation"
+    assert plan.follow_up is True
+    assert plan.spec.audience == "learner"
+    assert "ADC converts" in plan.retrieval_query
+    assert "Response style" in plan.generation_question
+
+
+def test_task_aware_retrieval_adds_synthesis_query():
+    plan = build_request_plan("What are the important things?")
+    queries = retrieval_queries(plan)
+    assert plan.task == "important_topics"
+    assert len(queries) == 2
+    assert "important topics" in queries[1]
 
 
 def test_answer_service_calls_provider_for_explain(tmp_path: Path):

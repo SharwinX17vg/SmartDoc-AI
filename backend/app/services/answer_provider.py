@@ -121,6 +121,7 @@ class LLMAnswerProvider:
             },
             method="POST",
         )
+        request.headers["Authorization"] = "Bearer " + self.api_key
         try:
             with urlopen(request, timeout=self.timeout_seconds) as response:
                 result = json.loads(response.read().decode("utf-8"))

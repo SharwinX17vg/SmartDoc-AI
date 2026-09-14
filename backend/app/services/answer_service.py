@@ -6,6 +6,7 @@ import os
 from ..models.schemas import DocumentSummary, SourceReference
 from ..rag.local_index import LocalHybridIndex
 from .answer_provider import AnswerProvider, AnswerProviderError, ExtractiveAnswerProvider, create_answer_provider
+from .orchestration import build_request_plan, retrieval_queries
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,16 @@ class AnswerService:
         conversation: list[dict[str, str]] | None = None,
     ) -> tuple[str, str | None, str, list[SourceReference], list[DocumentSummary]]:
         command, request = self._parse_command(question)
+        plan = build_request_plan(request, conversation)
         intent = self._intent(command, request)
+        if intent == "document_question":
+            intent = {
+                "summary": "summary",
+                "overview": "summary",
+                "important_topics": "summary",
+                "comparison": "comparison",
+                "explanation": "explanation",
+            }.get(plan.task, intent)
         if intent in {"greeting", "thanks", "goodbye", "invalid"}:
             return self._casual(request, intent), command, intent, [], []
         matches = None
@@ -44,15 +54,20 @@ class AnswerService:
             if not matches:
                 return self._casual(request, intent), command, intent, [], []
             intent = "document_question"
-        if conversation and self._is_follow_up(request):
-            recent_context = " ".join(item.get("content", "") for item in conversation[-8:] if item.get("content"))
-            request = f"{recent_context} {request}".strip()
         candidates = int(os.getenv("RETRIEVAL_CANDIDATES", "15"))
         min_score = float(os.getenv("MIN_RELEVANCE_SCORE", "0.05"))
         final_chunks = int(os.getenv("FINAL_CONTEXT_CHUNKS", str(top_k)))
+        if plan.task in {"summary", "important_topics", "overview"}:
+            final_chunks = max(final_chunks, 8)
         candidates = max(candidates, final_chunks)
         if matches is None:
-            matches = self.index.search(request, candidates, document_ids, candidates, min_score)
+            matches = self._retrieve(
+                retrieval_queries(plan),
+                candidates,
+                document_ids,
+                min_score,
+                plan.task,
+            )
         matches = self._compress_matches(matches, final_chunks)
         sources = [
             SourceReference(
@@ -70,7 +85,7 @@ class AnswerService:
             return "I couldn't find enough information in the selected documents to answer that accurately.", command, intent, [], self._documents(document_ids)
         context = self._format_context(matches)
         answer = self._generate_or_fallback(
-            request,
+            plan.generation_question,
             context,
             intent,
             conversation,
@@ -78,6 +93,27 @@ class AnswerService:
             matches,
         )
         return answer, command, intent, sources, self._documents(document_ids, matches)
+
+    def _retrieve(self, queries, candidates, document_ids, min_score, task):
+        per_query = max(2, candidates // len(queries))
+        found = []
+        seen: set[str] = set()
+        for query in queries:
+            for chunk, score in self.index.search(
+                query,
+                per_query,
+                document_ids,
+                candidates,
+                min_score,
+            ):
+                if chunk.chunk_id in seen:
+                    continue
+                seen.add(chunk.chunk_id)
+                found.append((chunk, score))
+        found.sort(key=lambda item: item[1], reverse=True)
+        if task in {"summary", "important_topics", "overview"}:
+            return found[:max(candidates, 8)]
+        return found[:candidates]
 
     @staticmethod
     def _parse_command(question: str) -> tuple[str | None, str]:

@@ -98,7 +98,7 @@ function appendMessage(role, text, sourceItems = []) {
   const row = document.createElement("article"); row.className = `message-row ${role}`;
   const bubble = document.createElement("div"); bubble.className = "bubble answer-markdown"; renderText(bubble, text); row.append(bubble);
   if (role === "assistant") {
-    if (sourceItems.length) { const list = document.createElement("div"); list.className = "source-list"; sourceItems.forEach((source) => { const card = document.createElement("div"); card.className = "source-card"; card.textContent = `${source.document_name} · Page ${source.page_number}`; const detail = document.createElement("small"); detail.textContent = source.section_title || "Retrieved source"; card.append(detail); list.append(card); }); row.append(list); }
+    if (sourceItems.length) { const list = document.createElement("div"); list.className = "source-list"; sourceItems.forEach((source) => { const card = document.createElement("details"); card.className = "source-card"; const summary = document.createElement("summary"); summary.textContent = `${source.document_name} · Page ${source.page_number}`; const detail = document.createElement("small"); detail.textContent = source.section_title || "Retrieved source"; const excerpt = document.createElement("p"); excerpt.textContent = source.chunk_text || "No excerpt available."; card.append(summary, detail, excerpt); list.append(card); }); row.append(list); }
     const tools = document.createElement("div"); tools.className = "message-tools"; tools.append(toolButton("Copy", () => copyText(text)), toolButton("Share", () => shareAnswer(text, sourceItems)), toolButton("Download", () => downloadText(text))); row.append(tools);
   }
   chat.append(row); chat.scrollTop = chat.scrollHeight;
