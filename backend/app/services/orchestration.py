@@ -56,7 +56,7 @@ def build_request_plan(
     clarification_needed = len(text.split()) < 3 and not follow_up
     reference = _reference_context(history) if follow_up else ""
     retrieval_query = f"{reference} {text}".strip() if reference else text
-    generation_question = f"{text}\n\n{spec.instructions()}"
+    generation_question = f"{text}\n\nTask: {task}.\n{_task_instructions(task)}\n{spec.instructions()}"
     if reference:
         generation_question += f"\nResolved conversation context: {reference}"
     return RequestPlan(
@@ -85,6 +85,18 @@ def retrieval_queries(plan: RequestPlan) -> list[str]:
     elif plan.task in {"teaching", "study_plan", "quiz", "flashcards", "notes", "revision", "exam", "viva", "interview"}:
         queries.append(plan.retrieval_query + " definitions key concepts examples common mistakes")
     return list(dict.fromkeys(query for query in queries if query.strip()))
+
+
+def _task_instructions(task: str) -> str:
+    instructions = {
+        "exam": "Create a numbered 2/5/10-mark question set as requested. Do not teach the topic unless asked.",
+        "teaching": "Teach the topic simply, step by step, using plain language and a short example from the documents.",
+        "summary": "Synthesize the main ideas across the evidence; do not answer with one isolated sentence.",
+        "important_topics": "List the distinct important topics, each with a short explanation and page support.",
+        "quiz": "Create varied questions from the evidence and keep the answer key separate.",
+        "flashcards": "Create distinct question-and-answer flashcards, one concept per card.",
+    }
+    return instructions.get(task, "Answer the user's request directly and distinctly.")
 
 
 def _task(question: str) -> str:

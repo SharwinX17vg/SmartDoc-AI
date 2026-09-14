@@ -99,7 +99,7 @@ class AnswerService:
                 chunk_text=chunk.text,
                 score=round(score, 4),
             )
-            for chunk, score in matches
+            for chunk, score in self._distinct_sources(matches)
         ]
         if not matches:
             return "I couldn't find enough information in the selected documents to answer that accurately.", command, intent, [], self._documents(document_ids)
@@ -119,6 +119,18 @@ class AnswerService:
         if browse is None:
             return []
         return browse(document_ids=document_ids, page_range=page_range, limit=max(limit, 8))
+
+    @staticmethod
+    def _distinct_sources(matches):
+        seen: set[tuple[str, int, str]] = set()
+        distinct = []
+        for chunk, score in matches:
+            key = (chunk.document_id, chunk.page_number, chunk.section_title or "")
+            if key in seen:
+                continue
+            seen.add(key)
+            distinct.append((chunk, score))
+        return distinct
 
     def _retrieve(self, queries, candidates, document_ids, min_score, task, page_range=None):
         per_query = max(2, candidates // len(queries))

@@ -162,6 +162,16 @@ def test_natural_language_mark_request_is_exam_workflow():
     plan = build_request_plan("give all the 2 mark question from this")
     assert plan.task == "exam"
     assert plan.spec.depth == "brief"
+    assert "question set" in plan.generation_question
+
+
+def test_teaching_and_exam_requests_get_distinct_task_instructions():
+    exam = build_request_plan("Give 2 mark questions from this PDF")
+    teaching = build_request_plan("Teach me this easily")
+    assert exam.task == "exam"
+    assert teaching.task == "teaching"
+    assert "question set" in exam.generation_question
+    assert "step by step" in teaching.generation_question
 
 
 @pytest.mark.parametrize(
