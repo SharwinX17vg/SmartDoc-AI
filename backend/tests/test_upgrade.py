@@ -234,6 +234,28 @@ def test_important_topics_browse_selected_document_when_similarity_is_weak(tmp_p
     assert sources
 
 
+def test_important_topics_always_include_document_overview(tmp_path: Path):
+    index = LocalHybridIndex(tmp_path / "index.json")
+    index.add_document(
+        "paper.pdf",
+        [
+            DocumentChunk("a", "a", "paper.pdf", 1, "Purpose", "The controller manages power and thermal safety."),
+            DocumentChunk("b", "a", "paper.pdf", 2, "Implementation", "Digital I/O uses TRIS registers to configure pins."),
+        ],
+        "a",
+    )
+
+    class FakeProvider:
+        def generate(self, question, context, intent, conversation=None):
+            assert intent == "summary"
+            assert "power and thermal safety" in context
+            assert "TRIS registers" in context
+            return "Important topics found."
+
+    answer, _, _, _, _ = AnswerService(index, FakeProvider()).answer("important topics")
+    assert answer == "Important topics found."
+
+
 def test_chunker_does_not_start_or_end_chunks_mid_word():
     page = PageText(1, "Purpose 117 hardware generation and reliable traffic handling " * 30)
     chunks = chunk_pages([page], chunk_size=80, overlap=15)

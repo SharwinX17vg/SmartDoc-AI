@@ -86,8 +86,9 @@ class AnswerService:
                 plan.task,
                 page_scope,
             )
-        if not matches and plan.task in {"summary", "important_topics", "overview", "exam", "quiz", "flashcards", "notes", "revision"}:
-            matches = self._browse_for_synthesis(document_ids, page_scope, candidates)
+        if plan.task in {"summary", "important_topics", "overview", "exam", "quiz", "flashcards", "notes", "revision"}:
+            overview_matches = self._browse_for_synthesis(document_ids, page_scope, candidates)
+            matches = self._combine_matches(overview_matches, matches or [])
         matches = self._compress_matches(matches, final_chunks)
         sources = [
             SourceReference(
@@ -119,6 +120,17 @@ class AnswerService:
         if browse is None:
             return []
         return browse(document_ids=document_ids, page_range=page_range, limit=max(limit, 8))
+
+    @staticmethod
+    def _combine_matches(primary, secondary):
+        combined = []
+        seen: set[str] = set()
+        for chunk, score in [*primary, *secondary]:
+            if chunk.chunk_id in seen:
+                continue
+            seen.add(chunk.chunk_id)
+            combined.append((chunk, score))
+        return combined
 
     @staticmethod
     def _distinct_sources(matches):
